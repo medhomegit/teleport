@@ -323,6 +323,18 @@ func TestConfigReading(t *testing.T) {
 					MatchLabels: map[string]apiutils.Strings{
 						"*": {"*"},
 					},
+					MatchRDS: MatchRDS{
+						Regions: []string{"us-west-1", "us-east-1"},
+						Tags: map[string]apiutils.Strings{
+							"a": {"b"},
+						},
+					},
+					MatchRedshift: MatchRedshift{
+						Regions: []string{"us-central-1"},
+						Tags: map[string]apiutils.Strings{
+							"c": {"d"},
+						},
+					},
 				},
 			},
 		},
@@ -1028,6 +1040,14 @@ func makeConfigFixture() string {
 	conf.Databases.Selectors = []Selector{
 		{
 			MatchLabels: map[string]apiutils.Strings{"*": {"*"}},
+			MatchRDS: MatchRDS{
+				Regions: []string{"us-west-1", "us-east-1"},
+				Tags:    map[string]apiutils.Strings{"a": {"b"}},
+			},
+			MatchRedshift: MatchRedshift{
+				Regions: []string{"us-central-1"},
+				Tags:    map[string]apiutils.Strings{"c": {"d"}},
+			},
 		},
 	}
 
@@ -1441,6 +1461,14 @@ db_service:
   selectors:
   - match_labels:
       '*': '*'
+  - match_rds:
+      regions: ["us-east-1", "us-west-1"]
+      tags:
+        '*': '*'
+  - match_redshift:
+      regions: ["us-central-1"]
+      tags:
+        'a': 'b'
   databases:
   - name: foo
     protocol: postgres

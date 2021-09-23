@@ -36,6 +36,7 @@ import (
 	"github.com/gravitational/teleport/lib/multiplexer"
 	"github.com/gravitational/teleport/lib/reversetunnel"
 	"github.com/gravitational/teleport/lib/services"
+	"github.com/gravitational/teleport/lib/srv/db/cloud"
 	"github.com/gravitational/teleport/lib/srv/db/common"
 	"github.com/gravitational/teleport/lib/srv/db/mongodb"
 	"github.com/gravitational/teleport/lib/srv/db/mysql"
@@ -897,12 +898,18 @@ func (c *testContext) setupDatabaseServer(ctx context.Context, t *testing.T, p a
 		},
 		OnReconcile: p.OnReconcile,
 		LockWatcher: lockWatcher,
+		CloudClients: &common.TestCloudClients{
+			STS:      &cloud.STSMock{},
+			RDS:      &cloud.RDSMock{},
+			Redshift: &cloud.RedshiftMock{},
+			IAM:      &cloud.IAMMock{},
+		},
 	})
 	require.NoError(t, err)
 
 	if !p.NoStart {
 		require.NoError(t, server.Start(ctx))
-		require.NoError(t, server.ForceHeartbeat())
+		//require.NoError(t, server.ForceHeartbeat())
 	}
 
 	return server

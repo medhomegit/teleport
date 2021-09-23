@@ -30,30 +30,30 @@ import (
 	"github.com/gravitational/trace"
 )
 
-type stsMock struct {
+type STSMock struct {
 	stsiface.STSAPI
-	arn string
+	ARN string
 }
 
-func (m *stsMock) GetCallerIdentityWithContext(aws.Context, *sts.GetCallerIdentityInput, ...request.Option) (*sts.GetCallerIdentityOutput, error) {
+func (m *STSMock) GetCallerIdentityWithContext(aws.Context, *sts.GetCallerIdentityInput, ...request.Option) (*sts.GetCallerIdentityOutput, error) {
 	return &sts.GetCallerIdentityOutput{
-		Arn: aws.String(m.arn),
+		Arn: aws.String(m.ARN),
 	}, nil
 }
 
-type rdsMock struct {
+type RDSMock struct {
 	rdsiface.RDSAPI
-	dbInstances []*rds.DBInstance
-	dbClusters  []*rds.DBCluster
+	DBInstances []*rds.DBInstance
+	DBClusters  []*rds.DBCluster
 }
 
-func (m *rdsMock) DescribeDBInstancesWithContext(ctx aws.Context, input *rds.DescribeDBInstancesInput, options ...request.Option) (*rds.DescribeDBInstancesOutput, error) {
+func (m *RDSMock) DescribeDBInstancesWithContext(ctx aws.Context, input *rds.DescribeDBInstancesInput, options ...request.Option) (*rds.DescribeDBInstancesOutput, error) {
 	if aws.StringValue(input.DBInstanceIdentifier) == "" {
 		return &rds.DescribeDBInstancesOutput{
-			DBInstances: m.dbInstances,
+			DBInstances: m.DBInstances,
 		}, nil
 	}
-	for _, instance := range m.dbInstances {
+	for _, instance := range m.DBInstances {
 		if aws.StringValue(instance.DBInstanceIdentifier) == aws.StringValue(input.DBInstanceIdentifier) {
 			return &rds.DescribeDBInstancesOutput{
 				DBInstances: []*rds.DBInstance{instance},
@@ -63,13 +63,20 @@ func (m *rdsMock) DescribeDBInstancesWithContext(ctx aws.Context, input *rds.Des
 	return nil, trace.NotFound("instance %v not found", aws.StringValue(input.DBInstanceIdentifier))
 }
 
-func (m *rdsMock) DescribeDBClustersWithContext(ctx aws.Context, input *rds.DescribeDBClustersInput, options ...request.Option) (*rds.DescribeDBClustersOutput, error) {
+func (m *RDSMock) DescribeDBInstancesPagesWithContext(ctx aws.Context, input *rds.DescribeDBInstancesInput, fn func(*rds.DescribeDBInstancesOutput, bool) bool, options ...request.Option) error {
+	fn(&rds.DescribeDBInstancesOutput{
+		DBInstances: m.DBInstances,
+	}, true)
+	return nil
+}
+
+func (m *RDSMock) DescribeDBClustersWithContext(ctx aws.Context, input *rds.DescribeDBClustersInput, options ...request.Option) (*rds.DescribeDBClustersOutput, error) {
 	if aws.StringValue(input.DBClusterIdentifier) == "" {
 		return &rds.DescribeDBClustersOutput{
-			DBClusters: m.dbClusters,
+			DBClusters: m.DBClusters,
 		}, nil
 	}
-	for _, cluster := range m.dbClusters {
+	for _, cluster := range m.DBClusters {
 		if aws.StringValue(cluster.DBClusterIdentifier) == aws.StringValue(input.DBClusterIdentifier) {
 			return &rds.DescribeDBClustersOutput{
 				DBClusters: []*rds.DBCluster{cluster},
@@ -79,41 +86,48 @@ func (m *rdsMock) DescribeDBClustersWithContext(ctx aws.Context, input *rds.Desc
 	return nil, trace.NotFound("cluster %v not found", aws.StringValue(input.DBClusterIdentifier))
 }
 
-func (m *rdsMock) ModifyDBInstanceWithContext(ctx aws.Context, input *rds.ModifyDBInstanceInput, options ...request.Option) (*rds.ModifyDBInstanceOutput, error) {
-	for i, instance := range m.dbInstances {
+func (m *RDSMock) DescribeDBClustersPagesWithContext(aws aws.Context, input *rds.DescribeDBClustersInput, fn func(*rds.DescribeDBClustersOutput, bool) bool, options ...request.Option) error {
+	fn(&rds.DescribeDBClustersOutput{
+		DBClusters: m.DBClusters,
+	}, true)
+	return nil
+}
+
+func (m *RDSMock) ModifyDBInstanceWithContext(ctx aws.Context, input *rds.ModifyDBInstanceInput, options ...request.Option) (*rds.ModifyDBInstanceOutput, error) {
+	for i, instance := range m.DBInstances {
 		if aws.StringValue(instance.DBInstanceIdentifier) == aws.StringValue(input.DBInstanceIdentifier) {
 			if aws.BoolValue(input.EnableIAMDatabaseAuthentication) {
-				m.dbInstances[i].IAMDatabaseAuthenticationEnabled = aws.Bool(true)
+				m.DBInstances[i].IAMDatabaseAuthenticationEnabled = aws.Bool(true)
 			}
 			return &rds.ModifyDBInstanceOutput{
-				DBInstance: m.dbInstances[i],
+				DBInstance: m.DBInstances[i],
 			}, nil
 		}
 	}
 	return nil, trace.NotFound("instance %v not found", aws.StringValue(input.DBInstanceIdentifier))
 }
 
-func (m *rdsMock) ModifyDBClusterWithContext(ctx aws.Context, input *rds.ModifyDBClusterInput, options ...request.Option) (*rds.ModifyDBClusterOutput, error) {
-	for i, cluster := range m.dbClusters {
+func (m *RDSMock) ModifyDBClusterWithContext(ctx aws.Context, input *rds.ModifyDBClusterInput, options ...request.Option) (*rds.ModifyDBClusterOutput, error) {
+	for i, cluster := range m.DBClusters {
 		if aws.StringValue(cluster.DBClusterIdentifier) == aws.StringValue(input.DBClusterIdentifier) {
 			if aws.BoolValue(input.EnableIAMDatabaseAuthentication) {
-				m.dbClusters[i].IAMDatabaseAuthenticationEnabled = aws.Bool(true)
+				m.DBClusters[i].IAMDatabaseAuthenticationEnabled = aws.Bool(true)
 			}
 			return &rds.ModifyDBClusterOutput{
-				DBCluster: m.dbClusters[i],
+				DBCluster: m.DBClusters[i],
 			}, nil
 		}
 	}
 	return nil, trace.NotFound("cluster %v not found", aws.StringValue(input.DBClusterIdentifier))
 }
 
-type iamMock struct {
+type IAMMock struct {
 	iamiface.IAMAPI
 	attachedRolePolicies map[string][]string
 	attachedUserPolicies map[string][]string
 }
 
-func (m *iamMock) PutRolePolicyWithContext(ctx aws.Context, input *iam.PutRolePolicyInput, options ...request.Option) (*iam.PutRolePolicyOutput, error) {
+func (m *IAMMock) PutRolePolicyWithContext(ctx aws.Context, input *iam.PutRolePolicyInput, options ...request.Option) (*iam.PutRolePolicyOutput, error) {
 	if m.attachedRolePolicies == nil {
 		m.attachedRolePolicies = make(map[string][]string)
 	}
@@ -123,7 +137,7 @@ func (m *iamMock) PutRolePolicyWithContext(ctx aws.Context, input *iam.PutRolePo
 	return &iam.PutRolePolicyOutput{}, nil
 }
 
-func (m *iamMock) PutUserPolicyWithContext(ctx aws.Context, input *iam.PutUserPolicyInput, options ...request.Option) (*iam.PutUserPolicyOutput, error) {
+func (m *IAMMock) PutUserPolicyWithContext(ctx aws.Context, input *iam.PutUserPolicyInput, options ...request.Option) (*iam.PutUserPolicyOutput, error) {
 	if m.attachedUserPolicies == nil {
 		m.attachedUserPolicies = make(map[string][]string)
 	}
@@ -133,7 +147,7 @@ func (m *iamMock) PutUserPolicyWithContext(ctx aws.Context, input *iam.PutUserPo
 	return &iam.PutUserPolicyOutput{}, nil
 }
 
-func (m *iamMock) DeleteRolePolicyWithContext(ctx aws.Context, input *iam.DeleteRolePolicyInput, options ...request.Option) (*iam.DeleteRolePolicyOutput, error) {
+func (m *IAMMock) DeleteRolePolicyWithContext(ctx aws.Context, input *iam.DeleteRolePolicyInput, options ...request.Option) (*iam.DeleteRolePolicyOutput, error) {
 	for i, policy := range m.attachedRolePolicies[aws.StringValue(input.RoleName)] {
 		if policy == aws.StringValue(input.PolicyName) {
 			m.attachedRolePolicies[aws.StringValue(input.RoleName)] = append(
@@ -144,7 +158,7 @@ func (m *iamMock) DeleteRolePolicyWithContext(ctx aws.Context, input *iam.Delete
 	return &iam.DeleteRolePolicyOutput{}, nil
 }
 
-func (m *iamMock) DeleteUserPolicyWithContext(ctx aws.Context, input *iam.DeleteUserPolicyInput, options ...request.Option) (*iam.DeleteUserPolicyOutput, error) {
+func (m *IAMMock) DeleteUserPolicyWithContext(ctx aws.Context, input *iam.DeleteUserPolicyInput, options ...request.Option) (*iam.DeleteUserPolicyOutput, error) {
 	for i, policy := range m.attachedUserPolicies[aws.StringValue(input.UserName)] {
 		if policy == aws.StringValue(input.PolicyName) {
 			m.attachedUserPolicies[aws.StringValue(input.UserName)] = append(
@@ -155,18 +169,18 @@ func (m *iamMock) DeleteUserPolicyWithContext(ctx aws.Context, input *iam.Delete
 	return &iam.DeleteUserPolicyOutput{}, nil
 }
 
-type redshiftMock struct {
+type RedshiftMock struct {
 	redshiftiface.RedshiftAPI
-	clusters []*redshift.Cluster
+	Clusters []*redshift.Cluster
 }
 
-func (m *redshiftMock) DescribeClustersWithContext(ctx aws.Context, input *redshift.DescribeClustersInput, options ...request.Option) (*redshift.DescribeClustersOutput, error) {
+func (m *RedshiftMock) DescribeClustersWithContext(ctx aws.Context, input *redshift.DescribeClustersInput, options ...request.Option) (*redshift.DescribeClustersOutput, error) {
 	if aws.StringValue(input.ClusterIdentifier) == "" {
 		return &redshift.DescribeClustersOutput{
-			Clusters: m.clusters,
+			Clusters: m.Clusters,
 		}, nil
 	}
-	for _, cluster := range m.clusters {
+	for _, cluster := range m.Clusters {
 		if aws.StringValue(cluster.ClusterIdentifier) == aws.StringValue(input.ClusterIdentifier) {
 			return &redshift.DescribeClustersOutput{
 				Clusters: []*redshift.Cluster{cluster},
@@ -177,52 +191,52 @@ func (m *redshiftMock) DescribeClustersWithContext(ctx aws.Context, input *redsh
 }
 
 // rdsMockUnath is a mock RDS client that returns access denied to each call.
-type rdsMockUnauth struct {
+type RDSMockUnauth struct {
 	rdsiface.RDSAPI
 }
 
-func (m *rdsMockUnauth) DescribeDBInstancesWithContext(ctx aws.Context, input *rds.DescribeDBInstancesInput, options ...request.Option) (*rds.DescribeDBInstancesOutput, error) {
+func (m *RDSMockUnauth) DescribeDBInstancesWithContext(ctx aws.Context, input *rds.DescribeDBInstancesInput, options ...request.Option) (*rds.DescribeDBInstancesOutput, error) {
 	return nil, trace.AccessDenied("unauthorized")
 }
 
-func (m *rdsMockUnauth) DescribeDBClustersWithContext(ctx aws.Context, input *rds.DescribeDBClustersInput, options ...request.Option) (*rds.DescribeDBClustersOutput, error) {
+func (m *RDSMockUnauth) DescribeDBClustersWithContext(ctx aws.Context, input *rds.DescribeDBClustersInput, options ...request.Option) (*rds.DescribeDBClustersOutput, error) {
 	return nil, trace.AccessDenied("unauthorized")
 }
 
-func (m *rdsMockUnauth) ModifyDBInstanceWithContext(ctx aws.Context, input *rds.ModifyDBInstanceInput, options ...request.Option) (*rds.ModifyDBInstanceOutput, error) {
+func (m *RDSMockUnauth) ModifyDBInstanceWithContext(ctx aws.Context, input *rds.ModifyDBInstanceInput, options ...request.Option) (*rds.ModifyDBInstanceOutput, error) {
 	return nil, trace.AccessDenied("unauthorized")
 }
 
-func (m *rdsMockUnauth) ModifyDBClusterWithContext(ctx aws.Context, input *rds.ModifyDBClusterInput, options ...request.Option) (*rds.ModifyDBClusterOutput, error) {
+func (m *RDSMockUnauth) ModifyDBClusterWithContext(ctx aws.Context, input *rds.ModifyDBClusterInput, options ...request.Option) (*rds.ModifyDBClusterOutput, error) {
 	return nil, trace.AccessDenied("unauthorized")
 }
 
-// redshiftMockUnauth is a mock Redshift client that returns access denied to each call.
-type redshiftMockUnauth struct {
+// RedshiftMockUnauth is a mock Redshift client that returns access denied to each call.
+type RedshiftMockUnauth struct {
 	redshiftiface.RedshiftAPI
 }
 
-func (m *redshiftMockUnauth) DescribeClustersWithContext(ctx aws.Context, input *redshift.DescribeClustersInput, options ...request.Option) (*redshift.DescribeClustersOutput, error) {
+func (m *RedshiftMockUnauth) DescribeClustersWithContext(ctx aws.Context, input *redshift.DescribeClustersInput, options ...request.Option) (*redshift.DescribeClustersOutput, error) {
 	return nil, trace.AccessDenied("unauthorized")
 }
 
-// iamMockUnauth is a mock IAM client that returns access denied to each call.
-type iamMockUnauth struct {
+// IAMMockUnauth is a mock IAM client that returns access denied to each call.
+type IAMMockUnauth struct {
 	iamiface.IAMAPI
 }
 
-func (m *iamMockUnauth) PutRolePolicyWithContext(ctx aws.Context, input *iam.PutRolePolicyInput, options ...request.Option) (*iam.PutRolePolicyOutput, error) {
+func (m *IAMMockUnauth) PutRolePolicyWithContext(ctx aws.Context, input *iam.PutRolePolicyInput, options ...request.Option) (*iam.PutRolePolicyOutput, error) {
 	return nil, trace.AccessDenied("unauthorized")
 }
 
-func (m *iamMockUnauth) PutUserPolicyWithContext(ctx aws.Context, input *iam.PutUserPolicyInput, options ...request.Option) (*iam.PutUserPolicyOutput, error) {
+func (m *IAMMockUnauth) PutUserPolicyWithContext(ctx aws.Context, input *iam.PutUserPolicyInput, options ...request.Option) (*iam.PutUserPolicyOutput, error) {
 	return nil, trace.AccessDenied("unauthorized")
 }
 
-func (m *iamMockUnauth) DeleteRolePolicyWithContext(ctx aws.Context, input *iam.DeleteRolePolicyInput, options ...request.Option) (*iam.DeleteRolePolicyOutput, error) {
+func (m *IAMMockUnauth) DeleteRolePolicyWithContext(ctx aws.Context, input *iam.DeleteRolePolicyInput, options ...request.Option) (*iam.DeleteRolePolicyOutput, error) {
 	return nil, trace.AccessDenied("unauthorized")
 }
 
-func (m *iamMockUnauth) DeleteUserPolicyWithContext(ctx aws.Context, input *iam.DeleteUserPolicyInput, options ...request.Option) (*iam.DeleteUserPolicyOutput, error) {
+func (m *IAMMockUnauth) DeleteUserPolicyWithContext(ctx aws.Context, input *iam.DeleteUserPolicyInput, options ...request.Option) (*iam.DeleteUserPolicyOutput, error) {
 	return nil, trace.AccessDenied("unauthorized")
 }

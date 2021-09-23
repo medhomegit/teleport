@@ -65,7 +65,7 @@ func (s *Server) startWatcher(ctx context.Context) (*services.AppWatcher, error)
 
 func (s *Server) getReconciler() (*services.Reconciler, error) {
 	return services.NewReconciler(services.ReconcilerConfig{
-		Selectors:    s.c.Selectors,
+		Matcher:      s.matcher,
 		GetResources: s.getResources,
 		OnCreate:     s.onCreate,
 		OnUpdate:     s.onUpdate,
@@ -96,4 +96,12 @@ func (s *Server) onUpdate(ctx context.Context, resource types.ResourceWithLabels
 
 func (s *Server) onDelete(ctx context.Context, resource types.ResourceWithLabels) error {
 	return s.unregisterApp(ctx, resource.GetName())
+}
+
+func (s *Server) matcher(resource types.ResourceWithLabels) bool {
+	app, ok := resource.(types.Application)
+	if !ok {
+		return false
+	}
+	return services.MatchResourceLabels(s.c.Selectors, app)
 }

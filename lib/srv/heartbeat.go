@@ -273,6 +273,7 @@ func (h *Heartbeat) Run() error {
 		select {
 		case <-h.checkTicker.Chan():
 		case <-h.sendC:
+			fmt.Println("Asked check out of cycle")
 			h.Debugf("Asked check out of cycle")
 		case <-h.cancelCtx.Done():
 			h.Debugf("Heartbeat exited.")
@@ -330,13 +331,16 @@ func (h *Heartbeat) fetch() error {
 	switch h.state {
 	// in case of successful state fetch, move to announce from init
 	case HeartbeatStateInit:
+		fmt.Println("1")
 		h.current = server
 		h.reset(HeartbeatStateAnnounce)
 		return nil
 		// nothing to do in announce state
 	case HeartbeatStateAnnounce:
+		fmt.Println("2")
 		return nil
 	case HeartbeatStateAnnounceWait:
+		fmt.Println("3")
 		// time to announce
 		if h.Clock.Now().UTC().After(h.nextAnnounce) {
 			h.current = server
@@ -344,6 +348,7 @@ func (h *Heartbeat) fetch() error {
 			return nil
 		}
 		result := services.CompareServers(h.current, server)
+		fmt.Println("3", result)
 		// server update happened, time to announce
 		if result == services.Different {
 			h.current = server
@@ -352,16 +357,19 @@ func (h *Heartbeat) fetch() error {
 		return nil
 		// nothing to do in keep alive state
 	case HeartbeatStateKeepAlive:
+		fmt.Println("4")
 		return nil
 		// Stay in keep alive state in case
 		// if there are no changes
 	case HeartbeatStateKeepAliveWait:
+		fmt.Println("5")
 		// time to send a new keep alive
 		if h.Clock.Now().UTC().After(h.nextKeepAlive) {
 			h.setState(HeartbeatStateKeepAlive)
 			return nil
 		}
 		result := services.CompareServers(h.current, server)
+		fmt.Println("5", result)
 		// server update happened, move to announce
 		if result == services.Different {
 			h.current = server

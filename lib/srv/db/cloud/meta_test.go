@@ -33,8 +33,8 @@ import (
 // TestAWSMetadata tests fetching AWS metadata for RDS and Redshift databases.
 func TestAWSMetadata(t *testing.T) {
 	// Configure RDS API mock.
-	rds := &rdsMock{
-		dbInstances: []*rds.DBInstance{
+	rds := &RDSMock{
+		DBInstances: []*rds.DBInstance{
 			// Standalone RDS instance.
 			{
 				DBInstanceArn:                    aws.String("arn:aws:rds:us-west-1:1234567890:db:postgres-rds"),
@@ -49,7 +49,7 @@ func TestAWSMetadata(t *testing.T) {
 				DBClusterIdentifier:  aws.String("postgres-aurora"),
 			},
 		},
-		dbClusters: []*rds.DBCluster{
+		DBClusters: []*rds.DBCluster{
 			// Aurora cluster.
 			{
 				DBClusterArn:        aws.String("arn:aws:rds:us-east-1:1234567890:cluster:postgres-aurora"),
@@ -60,8 +60,8 @@ func TestAWSMetadata(t *testing.T) {
 	}
 
 	// Configure Redshift API mock.
-	redshift := &redshiftMock{
-		clusters: []*redshift.Cluster{
+	redshift := &RedshiftMock{
+		Clusters: []*redshift.Cluster{
 			{
 				ClusterNamespaceArn: aws.String("arn:aws:redshift:us-west-1:1234567890:namespace:namespace-id"),
 				ClusterIdentifier:   aws.String("redshift-cluster-1"),
@@ -191,8 +191,8 @@ func TestAWSMetadata(t *testing.T) {
 // cause an error.
 func TestAWSMetadataNoPermissions(t *testing.T) {
 	// Create unauthorized mocks.
-	rds := &rdsMockUnauth{}
-	redshift := &redshiftMockUnauth{}
+	rds := &RDSMockUnauth{}
+	redshift := &RedshiftMockUnauth{}
 
 	// Create metadata fetcher.
 	metadata, err := NewMetadata(MetadataConfig{

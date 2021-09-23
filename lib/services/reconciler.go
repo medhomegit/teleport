@@ -27,8 +27,8 @@ import (
 
 // ReconcilerConfig is the resource reconciler configuration.
 type ReconcilerConfig struct {
-	// Selectors is a list of selectors the reconciler will match resources against.
-	Selectors []Selector
+	// Matcher is used to match resources.
+	Matcher Matcher
 	// GetResources is used to fetch currently registered resources list.
 	GetResources func() types.ResourcesWithLabels
 	// OnCreate is called when a new resource is detected.
@@ -41,10 +41,16 @@ type ReconcilerConfig struct {
 	Log logrus.FieldLogger
 }
 
+// Matcher is used by reconciler to match resources.
+type Matcher func(types.ResourceWithLabels) bool
+
 // CheckAndSetDefaults validates the reconciler configuration and sets defaults.
 func (c *ReconcilerConfig) CheckAndSetDefaults() error {
 	if c.GetResources == nil {
 		return trace.BadParameter("missing reconciler GetResources")
+	}
+	if c.Matcher == nil {
+		return trace.BadParameter("missing reconciler Matcher")
 	}
 	if c.OnCreate == nil {
 		return trace.BadParameter("missing reconciler OnCreate")
@@ -68,7 +74,7 @@ func NewReconciler(cfg ReconcilerConfig) (*Reconciler, error) {
 	}
 	return &Reconciler{
 		cfg: cfg,
-		log: cfg.Log.WithField("selectors", cfg.Selectors),
+		log: cfg.Log,
 	}, nil
 }
 
@@ -108,12 +114,6 @@ func (r *Reconciler) Reconcile(ctx context.Context, newResources types.Resources
 // processRegisteredResource checks the specified registered resource against the
 // new list of resources.
 func (r *Reconciler) processRegisteredResource(ctx context.Context, newResources types.ResourcesWithLabels, registered types.ResourceWithLabels) error {
-	// Skip resources marked as static as those usually come from static config.
-	// For backwards compatibility also consider empty "origin" value.
-	if registered.Origin() == types.OriginConfigFile || registered.Origin() == "" {
-		return nil
-	}
-
 	// See if this registered resource is still present among "new" resources.
 	if new := newResources.Find(registered.GetName()); new != nil {
 		return nil
@@ -134,7 +134,7 @@ func (r *Reconciler) processNewResource(ctx context.Context, new types.ResourceW
 	// matches the selector labels and should be registered.
 	registered := r.cfg.GetResources().Find(new.GetName())
 	if registered == nil {
-		if MatchResourceLabels(r.cfg.Selectors, new) {
+		if r.cfg.Matcher(new) {
 			r.log.Infof("%v matches, creating.", new)
 			if err := r.cfg.OnCreate(ctx, new); err != nil {
 				return trace.Wrap(err, "failed to create %v", new)
@@ -145,17 +145,17 @@ func (r *Reconciler) processNewResource(ctx context.Context, new types.ResourceW
 		return nil
 	}
 
-	// Do not overwrite static resources. Consider resources with empty
-	// origin as static for backwards compatibility.
-	if registered.Origin() == types.OriginConfigFile || registered.Origin() == "" {
-		r.log.Infof("%v is part of static configuration, not creating %v.", registered, new)
+	// Don't overwrite resource of a different origin.
+	if registered.Origin() != new.Origin() {
+		r.log.Debugf("%v has different origin (%v vs %v), not updating.", new,
+			new.Origin(), registered.Origin())
 		return nil
 	}
 
 	// If the resource is already registered but was updated, see if its
 	// labels still match.
-	if new.GetResourceID() != registered.GetResourceID() {
-		if MatchResourceLabels(r.cfg.Selectors, new) {
+	if CompareResources(new, registered) != Equal {
+		if r.cfg.Matcher(new) {
 			r.log.Infof("%v updated, updating.", new)
 			if err := r.cfg.OnUpdate(ctx, new); err != nil {
 				return trace.Wrap(err, "failed to update %v", new)

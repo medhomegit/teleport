@@ -939,6 +939,14 @@ func applyDatabasesConfig(fc *FileConfig, cfg *service.Config) error {
 		cfg.Databases.Selectors = append(cfg.Databases.Selectors,
 			services.Selector{
 				MatchLabels: selector.MatchLabels,
+				MatchRDS: services.RDSMatcher{
+					Regions: selector.MatchRDS.Regions,
+					Tags:    selector.MatchRDS.Tags,
+				},
+				MatchRedshift: services.RedshiftMatcher{
+					Regions: selector.MatchRedshift.Regions,
+					Tags:    selector.MatchRedshift.Tags,
+				},
 			})
 	}
 	for _, database := range fc.Databases.Databases {

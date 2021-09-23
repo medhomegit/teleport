@@ -18,6 +18,7 @@ package services
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/gravitational/teleport/api/types"
 
@@ -28,14 +29,41 @@ import (
 type Selector struct {
 	// MatchLabels is a selector that matches labels.
 	MatchLabels types.Labels
+	// MatchRDS is a selector that matches RDS databases.
+	MatchRDS RDSMatcher
+	// MatchRedshift is a selector that matches Redshift databases.
+	MatchRedshift RedshiftMatcher
+}
+
+// RDSMatcher is a selector that matches RDS databases.
+type RDSMatcher struct {
+	// Regions are regions to query databases in.
+	Regions []string
+	// Tags are RDS resource tags to match.
+	Tags types.Labels
+}
+
+// RedshiftMatcher is a selector that matches Redshift databases.
+type RedshiftMatcher struct {
+	// Regions are regions to query databases in.
+	Regions []string
+	// Tags are Redshift resource tags to match.
+	Tags types.Labels
 }
 
 // String returns the selector string representation.
 func (s Selector) String() string {
+	var parts []string
 	if len(s.MatchLabels) != 0 {
-		return fmt.Sprintf("MatchLabels(%v)", s.MatchLabels)
+		parts = append(parts, fmt.Sprintf("MatchLabels(%v)", s.MatchLabels))
 	}
-	return ""
+	if len(s.MatchRDS.Tags) != 0 {
+		parts = append(parts, fmt.Sprintf("MatchRDS(%v)", s.MatchRDS.Tags))
+	}
+	if len(s.MatchRedshift.Tags) != 0 {
+		parts = append(parts, fmt.Sprintf("MatchRedshift(%v)", s.MatchRedshift.Tags))
+	}
+	return strings.Join(parts, ", ")
 }
 
 // MatchResourceLabels returns true if any of the provided selectors matches the provided database.

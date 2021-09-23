@@ -54,20 +54,20 @@ func TestAWSIAM(t *testing.T) {
 	}
 
 	// Configure mocks.
-	stsClient := &stsMock{
-		arn: "arn:aws:iam::1234567890:role/test-role",
+	stsClient := &STSMock{
+		ARN: "arn:aws:iam::1234567890:role/test-role",
 	}
 
-	rdsClient := &rdsMock{
-		dbInstances: []*rds.DBInstance{rdsInstance},
-		dbClusters:  []*rds.DBCluster{auroraCluster},
+	rdsClient := &RDSMock{
+		DBInstances: []*rds.DBInstance{rdsInstance},
+		DBClusters:  []*rds.DBCluster{auroraCluster},
 	}
 
-	redshiftClient := &redshiftMock{
-		clusters: []*redshift.Cluster{redshiftCluster},
+	redshiftClient := &RedshiftMock{
+		Clusters: []*redshift.Cluster{redshiftCluster},
 	}
 
-	iamClient := &iamMock{}
+	iamClient := &IAMMock{}
 
 	// Setup database resources.
 	rdsDatabase, err := types.NewDatabaseV3(types.Metadata{
@@ -147,12 +147,12 @@ func TestAWSIAMNoPermissions(t *testing.T) {
 	ctx := context.Background()
 
 	// Create unauthorized mocks for AWS services.
-	stsClient := &stsMock{
-		arn: "arn:aws:iam::1234567890:role/test-role",
+	stsClient := &STSMock{
+		ARN: "arn:aws:iam::1234567890:role/test-role",
 	}
-	rdsClient := &rdsMockUnauth{}
-	redshiftClient := &redshiftMockUnauth{}
-	iamClient := &iamMockUnauth{}
+	rdsClient := &RDSMockUnauth{}
+	redshiftClient := &RedshiftMockUnauth{}
+	iamClient := &IAMMockUnauth{}
 
 	// Make configurator.
 	configurator, err := NewIAM(ctx, IAMConfig{
