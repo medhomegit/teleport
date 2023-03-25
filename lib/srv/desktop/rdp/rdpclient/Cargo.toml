@@ -20,6 +20,6 @@ num-traits = "0.2"
 # Ideally, we'd use RustCrypto/RSA instead of linking OpenSSL. Unfortunately,
 # RustCrypto doesn't expose the low-level primitives we need for the smartcard
 # challenge signing (see src/piv.rs for details).
-openssl = "0.10.36"
+openssl = "0.10.48"
 rdp-rs = { git = "https://github.com/gravitational/rdp-rs", rev = "92a80a25e27a802ffb2d21ac9d628e27e831dd5c" }
 uuid = { version = "0.8", features = ["v4"] }
